@@ -51,7 +51,7 @@
 
     .search-box {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 20px;
       margin-bottom: 30px;
     }
@@ -256,18 +256,22 @@
   <div class="container">
     <div class="header">
       <h1>🔤 Sambung Kata</h1>
-      <p>Cari kata berdasarkan awalan dan akhiran</p>
+      <p>Cari kata berdasarkan awalan, tengah, dan akhiran</p>
     </div>
 
     <div class="content">
       <div class="info-message">
-        💡 Masukkan awalan, akhiran, atau keduanya untuk mencari kata
+        💡 Masukkan awalan, huruf di tengah, akhiran, atau kombinasinya untuk mencari kata
       </div>
 
       <div class="search-box">
         <div class="input-group">
           <label for="startLetter">Diawali Dengan</label>
           <input type="text" id="startLetter" placeholder="contoh: 'ab' atau 'a'">
+        </div>
+        <div class="input-group">
+          <label for="middleLetter">Huruf di Tengah</label>
+          <input type="text" id="middleLetter" placeholder="contoh: 'as' atau 'm'">
         </div>
         <div class="input-group">
           <label for="endLetter">Diakhiri Dengan</label>
@@ -323,6 +327,10 @@
       if (e.key === 'Enter') searchWords();
     });
 
+    document.getElementById('middleLetter').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') searchWords();
+    });
+
     // Auto-capitalize input
     document.getElementById('startLetter').addEventListener('input', (e) => {
       e.target.value = e.target.value.toLowerCase();
@@ -332,25 +340,39 @@
       e.target.value = e.target.value.toLowerCase();
     });
 
+    document.getElementById('middleLetter').addEventListener('input', (e) => {
+      e.target.value = e.target.value.toLowerCase();
+    });
+
     function searchWords() {
       const startLetter = document.getElementById('startLetter').value.toLowerCase();
       const endLetter = document.getElementById('endLetter').value.toLowerCase();
+      const middleLetter = document.getElementById('middleLetter').value.toLowerCase();
 
-      if (!startLetter && !endLetter) {
-        alert('Masukkan awalan atau akhiran terlebih dahulu');
+      if (!startLetter && !endLetter && !middleLetter) {
+        alert('Masukkan awalan, huruf di tengah, atau akhiran terlebih dahulu');
         return;
       }
 
       // Filter words
       let results = allWords.filter(word => {
+        const normalizedWord = word.toLowerCase();
         const matches = [];
 
         if (startLetter) {
-          matches.push(word.toLowerCase().startsWith(startLetter));
+          matches.push(normalizedWord.startsWith(startLetter));
         }
 
         if (endLetter) {
-          matches.push(word.toLowerCase().endsWith(endLetter));
+          matches.push(normalizedWord.endsWith(endLetter));
+        }
+
+        if (middleLetter) {
+          const middleIndex = normalizedWord.indexOf(middleLetter);
+          const isInMiddle =
+            middleIndex > 0 &&
+            middleIndex + middleLetter.length < normalizedWord.length;
+          matches.push(isInMiddle);
         }
 
         return matches.every(m => m === true);
@@ -384,6 +406,7 @@
     function clearSearch() {
       document.getElementById('startLetter').value = '';
       document.getElementById('endLetter').value = '';
+      document.getElementById('middleLetter').value = '';
       document.getElementById('resultsSection').style.display = 'none';
       document.getElementById('startLetter').focus();
     }
