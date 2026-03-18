@@ -110,6 +110,31 @@
       transform: translateY(0);
     }
 
+    .sort-options {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #f9f9f9;
+      border-radius: 8px;
+    }
+
+    .sort-options label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-weight: 500;
+      color: #333;
+    }
+
+    .sort-options input[type="radio"] {
+      cursor: pointer;
+      width: 16px;
+      height: 16px;
+    }
+
     .btn-clear {
       padding: 12px 30px;
       background: #f0f0f0;
@@ -151,8 +176,8 @@
     }
 
     .results-container {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      display: flex;
+      flex-wrap: wrap;
       gap: 15px;
       max-height: 500px;
       overflow-y: auto;
@@ -160,7 +185,7 @@
 
     .word-item {
       background: #f5f5f5;
-      padding: 12px;
+      padding: 12px 15px;
       border-radius: 8px;
       border-left: 4px solid #2e7d32;
       text-align: center;
@@ -169,6 +194,12 @@
       transition: all 0.2s;
       cursor: pointer;
       user-select: none;
+      white-space: nowrap;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
     }
 
     .word-item:hover {
@@ -176,6 +207,23 @@
       color: white;
       transform: translateY(-2px);
       box-shadow: 0 5px 15px rgba(46, 125, 50, 0.25);
+    }
+
+    .word-item.in-kbbi {
+      border-left-color: #ff9800;
+      position: relative;
+    }
+
+    .kbbi-badge {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      background: #ff9800;
+      color: white;
+      font-size: 0.4em;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-weight: 700;
     }
 
     .no-results {
@@ -216,19 +264,15 @@
     @media (max-width: 600px) {
       .search-box {
         grid-template-columns: 1fr;
-      }    
-    }
+      }
+      
+      .search-group {
+        flex-direction: column;
+      }
 
-    .search-group {
-      flex-direction: column;
-    }
-
-    .results-container {
-      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    }
-
-    .header h1 {
-      font-size: 1.8em;
+      .header h1 {
+        font-size: 1.8em;
+      }
     }
 
     /* Scrollbar styling */
@@ -284,6 +328,17 @@
         <button class="btn-clear" onclick="clearSearch()">Bersihkan</button>
       </div>
 
+      <div class="sort-options">
+        <label>
+          <input type="radio" name="sortOrder" value="asc" checked onclick="updateSort()">
+          📊 Paling Sedikit Huruf
+        </label>
+        <label>
+          <input type="radio" name="sortOrder" value="desc" onclick="updateSort()">
+          📊 Paling Banyak Huruf
+        </label>
+      </div>
+
       <div id="resultsSection" style="display: none;">
         <div class="results-header">
           <h2>Hasil</h2>
@@ -306,12 +361,17 @@
 
   <script>
     // Data is already loaded from data.js as 'allWords'
+    let currentResults = [];
+    let sortOrder = 'asc'; // asc or desc
     
     // Initialize on page load
     window.addEventListener('load', () => {
       if (allWords && allWords.length > 0) {
         document.getElementById('statusText').textContent = '✓ Data berhasil dimuat';
-        document.getElementById('totalCount').textContent = `Total: ${allWords.length} kata`;
+        
+        const kbbiCount = allWords.filter(item => typeof item === 'object' && item.kbbi === true).length;
+        document.getElementById('totalCount').textContent = `Total: ${allWords.length} kata (${kbbiCount} di KBBI)`;
+        
         document.getElementById('startLetter').focus();
       } else {
         document.getElementById('statusText').textContent = '✗ Galat: Data belum dimuat. Jalankan: node hm.js';
@@ -355,7 +415,8 @@
       }
 
       // Filter words
-      let results = allWords.filter(word => {
+      currentResults = allWords.filter(item => {
+        const word = typeof item === 'string' ? item : item.word;
         const normalizedWord = word.toLowerCase();
         const matches = [];
 
@@ -378,7 +439,14 @@
         return matches.every(m => m === true);
       });
 
-      displayResults(results);
+      displayResults(currentResults);
+    }
+
+    function updateSort() {
+      sortOrder = document.querySelector('input[name="sortOrder"]:checked').value;
+      if (currentResults.length > 0) {
+        displayResults(currentResults);
+      }
     }
 
     function displayResults(words) {
@@ -390,13 +458,40 @@
         resultsContainer.innerHTML = '<div class="no-results">Tidak ada kata yang cocok</div>';
         resultCount.textContent = '0';
       } else {
+        // Sort results: KBBI first, then by length
+        const sorted = [...words].sort((a, b) => {
+          const wordA = typeof a === 'string' ? a : a.word;
+          const wordB = typeof b === 'string' ? b : b.word;
+          const isKbbiA = typeof a === 'object' && a.kbbi === true;
+          const isKbbiB = typeof b === 'object' && b.kbbi === true;
+          
+          // KBBI items first
+          if (isKbbiA && !isKbbiB) return -1;
+          if (!isKbbiA && isKbbiB) return 1;
+          
+          // Within same group, sort by length
+          const lengthDiff = wordA.length - wordB.length;
+          if (sortOrder === 'asc') {
+            return lengthDiff;
+          } else {
+            return -lengthDiff;
+          }
+        });
+
         resultCount.textContent = words.length;
-        resultsContainer.innerHTML = words
-          .map(word => `
-                        <div class="word-item" title="${word}" onclick="copyToClipboard('${word}')">
+        resultsContainer.innerHTML = sorted
+          .map(item => {
+            const word = typeof item === 'string' ? item : item.word;
+            const isInKbbi = typeof item === 'object' && item.kbbi === true;
+            const kbbiClass = isInKbbi ? 'in-kbbi' : '';
+            const badgeHTML = isInKbbi ? '<span class="kbbi-badge">KBBI</span>' : '';
+            return `
+                        <div class="word-item ${kbbiClass}" title="${word}" onclick="copyToClipboard('${word}')">
+                            ${badgeHTML}
                             ${word}
                         </div>
-                    `)
+                    `;
+          })
           .join('');
       }
 
@@ -408,6 +503,7 @@
       document.getElementById('endLetter').value = '';
       document.getElementById('middleLetter').value = '';
       document.getElementById('resultsSection').style.display = 'none';
+      currentResults = [];
       document.getElementById('startLetter').focus();
     }
 
