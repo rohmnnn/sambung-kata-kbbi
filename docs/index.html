@@ -194,12 +194,12 @@
       transition: all 0.2s;
       cursor: pointer;
       user-select: none;
-      white-space: nowrap;
       min-height: 44px;
       display: flex;
       align-items: center;
       justify-content: center;
-      position: relative;
+      gap: 6px;
+      flex-wrap: wrap;
     }
 
     .word-item:hover {
@@ -211,19 +211,26 @@
 
     .word-item.in-kbbi {
       border-left-color: #ff9800;
-      position: relative;
     }
 
     .kbbi-badge {
-      position: absolute;
-      top: 2px;
-      right: 2px;
       background: #ff9800;
       color: white;
-      font-size: 0.4em;
-      padding: 2px 6px;
+      font-size: 0.65em;
+      padding: 3px 8px;
       border-radius: 3px;
       font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .sk-badge {
+      background: #2196f3;
+      color: white;
+      font-size: 0.65em;
+      padding: 3px 8px;
+      border-radius: 3px;
+      font-weight: 700;
+      white-space: nowrap;
     }
 
     .no-results {
@@ -306,6 +313,15 @@
     <div class="content">
       <div class="info-message">
         💡 Masukkan awalan, huruf di tengah, akhiran, atau kombinasinya untuk mencari kata
+      </div>
+
+      <div class="info-message" style="background: #e3f2fd; border-left-color: #2196f3; color: #0d47a1;">
+        📌 <strong>Keterangan Badge:</strong> <br style="display: inline-flex; gap: 15px; margin-left: 10px;">
+          <br />
+          <span><span class="sk-badge" style="display: inline-block;">SK</span> = Sambung Kata</span>
+          <br />
+          <span><span class="kbbi-badge" style="display: inline-block;">KBBI</span> = Kamus Besar Bahasa Indonesia</span>
+        </span>
       </div>
 
       <div class="search-box">
@@ -458,18 +474,25 @@
         resultsContainer.innerHTML = '<div class="no-results">Tidak ada kata yang cocok</div>';
         resultCount.textContent = '0';
       } else {
-        // Sort results: KBBI first, then by length
+        // Sort results: KBBI > SK > Others, then by length
         const sorted = [...words].sort((a, b) => {
           const wordA = typeof a === 'string' ? a : a.word;
           const wordB = typeof b === 'string' ? b : b.word;
           const isKbbiA = typeof a === 'object' && a.kbbi === true;
           const isKbbiB = typeof b === 'object' && b.kbbi === true;
+          const isSkA = typeof a === 'object' && a.sk === true;
+          const isSkB = typeof b === 'object' && b.sk === true;
           
-          // KBBI items first
-          if (isKbbiA && !isKbbiB) return -1;
-          if (!isKbbiA && isKbbiB) return 1;
+          // Assign priority: KBBI=2, SK=1, Others=0
+          const priorityA = isKbbiA ? 2 : (isSkA ? 1 : 0);
+          const priorityB = isKbbiB ? 2 : (isSkB ? 1 : 0);
           
-          // Within same group, sort by length
+          // Sort by priority first (highest first)
+          if (priorityA !== priorityB) {
+            return priorityB - priorityA;
+          }
+          
+          // Within same priority group, sort by length
           const lengthDiff = wordA.length - wordB.length;
           if (sortOrder === 'asc') {
             return lengthDiff;
@@ -483,12 +506,15 @@
           .map(item => {
             const word = typeof item === 'string' ? item : item.word;
             const isInKbbi = typeof item === 'object' && item.kbbi === true;
+            const isInSk = typeof item === 'object' && item.sk === true;
             const kbbiClass = isInKbbi ? 'in-kbbi' : '';
-            const badgeHTML = isInKbbi ? '<span class="kbbi-badge">KBBI</span>' : '';
+            const skBadgeHTML = isInSk ? '<span class="sk-badge" title="Sambung Kata">SK</span>' : '';
+            const kbbiBadgeHTML = isInKbbi ? '<span class="kbbi-badge" title="Kamus Besar Bahasa Indonesia">KBBI</span>' : '';
             return `
                         <div class="word-item ${kbbiClass}" title="${word}" onclick="copyToClipboard('${word}')">
-                            ${badgeHTML}
-                            ${word}
+                            ${skBadgeHTML}
+                            ${kbbiBadgeHTML}
+                            <span>${word}</span>
                         </div>
                     `;
           })
