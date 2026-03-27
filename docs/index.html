@@ -372,6 +372,12 @@
         </span>
       </div>
 
+       <div class="custom-mark-box">
+        <label for="markedWordsInput">Daftar Kata Untuk Ditandai (badge X)</label>
+        <textarea id="markedWordsInput" placeholder="contoh: apel, jeruk, mangga, pisang"></textarea>
+        <div class="custom-mark-help">Pisahkan kata dengan koma. Kata yang cocok di hasil akan ditandai badge X.</div>
+      </div>
+
       <div class="search-box">
         <div class="input-group">
           <label for="startLetter">Diawali Dengan</label>
@@ -385,12 +391,6 @@
           <label for="endLetter">Diakhiri Dengan</label>
           <input type="text" id="endLetter" placeholder="contoh: 'an' atau 'n'">
         </div>
-      </div>
-
-      <div class="custom-mark-box">
-        <label for="markedWordsInput">Daftar Kata Untuk Ditandai (badge X)</label>
-        <textarea id="markedWordsInput" placeholder="contoh: apel, jeruk, mangga, pisang"></textarea>
-        <div class="custom-mark-help">Pisahkan kata dengan koma. Kata yang cocok di hasil akan ditandai badge X.</div>
       </div>
 
       <div class="search-group">
@@ -592,10 +592,10 @@
             const xBadgeHTML = isMarkedX ? '<span class="x-badge" title="Ditandai dari daftar custom">X</span>' : '';
             return `
                         <div class="word-item ${kbbiClass}" title="${word}" onclick="copyToClipboard('${word}')">
-                    ${xBadgeHTML}
-                            ${skBadgeHTML}
-                            ${kbbiBadgeHTML}
-                            <span>${word}</span>
+                          ${skBadgeHTML}
+                          ${kbbiBadgeHTML}
+                          <span>${word}</span>
+                          ${xBadgeHTML}
                         </div>
                     `;
           })
@@ -603,6 +603,15 @@
       }
 
       resultsSection.style.display = 'block';
+
+      // Scroll to first word without X badge
+      setTimeout(() => {
+        const allWordItems = resultsContainer.querySelectorAll('.word-item');
+        const firstNonX = Array.from(allWordItems).find(el => !el.querySelector('.x-badge'));
+        if (firstNonX) {
+          firstNonX.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 50);
     }
 
     function clearSearch() {
