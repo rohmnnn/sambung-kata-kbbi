@@ -135,6 +135,44 @@
       height: 16px;
     }
 
+    .custom-mark-box {
+      margin-bottom: 25px;
+      padding: 15px;
+      background: #fff8e1;
+      border: 1px solid #ffe082;
+      border-radius: 8px;
+    }
+
+    .custom-mark-box label {
+      display: block;
+      font-weight: 600;
+      color: #5d4037;
+      margin-bottom: 8px;
+    }
+
+    .custom-mark-box textarea {
+      width: 100%;
+      min-height: 90px;
+      resize: vertical;
+      padding: 12px;
+      border: 2px solid #ffe082;
+      border-radius: 8px;
+      font-size: 0.95em;
+      font-family: inherit;
+    }
+
+    .custom-mark-box textarea:focus {
+      outline: none;
+      border-color: #ffb300;
+      box-shadow: 0 0 0 3px rgba(255, 179, 0, 0.2);
+    }
+
+    .custom-mark-help {
+      margin-top: 8px;
+      font-size: 0.9em;
+      color: #6d4c41;
+    }
+
     .btn-clear {
       padding: 12px 30px;
       background: #f0f0f0;
@@ -225,6 +263,16 @@
 
     .sk-badge {
       background: #2196f3;
+      color: white;
+      font-size: 0.65em;
+      padding: 3px 8px;
+      border-radius: 3px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .x-badge {
+      background: #e53935;
       color: white;
       font-size: 0.65em;
       padding: 3px 8px;
@@ -339,6 +387,12 @@
         </div>
       </div>
 
+      <div class="custom-mark-box">
+        <label for="markedWordsInput">Daftar Kata Untuk Ditandai (badge X)</label>
+        <textarea id="markedWordsInput" placeholder="contoh: apel, jeruk, mangga, pisang"></textarea>
+        <div class="custom-mark-help">Pisahkan kata dengan koma. Kata yang cocok di hasil akan ditandai badge X.</div>
+      </div>
+
       <div class="search-group">
         <button class="btn-search" onclick="searchWords()">🔍 Cari</button>
         <button class="btn-clear" onclick="clearSearch()">Bersihkan</button>
@@ -420,6 +474,22 @@
       e.target.value = e.target.value.toLowerCase();
     });
 
+    document.getElementById('markedWordsInput').addEventListener('input', () => {
+      if (currentResults.length > 0) {
+        displayResults(currentResults);
+      }
+    });
+
+    function getMarkedWordsSet() {
+      const raw = document.getElementById('markedWordsInput').value;
+      const words = raw
+        .split(',')
+        .map(word => word.trim().toLowerCase())
+        .filter(Boolean);
+
+      return new Set(words);
+    }
+
     function searchWords() {
       const startLetter = document.getElementById('startLetter').value.toLowerCase();
       const endLetter = document.getElementById('endLetter').value.toLowerCase();
@@ -469,19 +539,27 @@
       const resultsContainer = document.getElementById('resultsContainer');
       const resultsSection = document.getElementById('resultsSection');
       const resultCount = document.getElementById('resultCount');
+      const markedWords = getMarkedWordsSet();
 
       if (words.length === 0) {
         resultsContainer.innerHTML = '<div class="no-results">Tidak ada kata yang cocok</div>';
         resultCount.textContent = '0';
       } else {
-        // Sort results: KBBI > SK > Others, then by length
+        // Sort results: X badge first, then KBBI > SK > Others, then by length
         const sorted = [...words].sort((a, b) => {
           const wordA = typeof a === 'string' ? a : a.word;
           const wordB = typeof b === 'string' ? b : b.word;
+          const isMarkedXA = markedWords.has(wordA.toLowerCase());
+          const isMarkedXB = markedWords.has(wordB.toLowerCase());
           const isKbbiA = typeof a === 'object' && a.kbbi === true;
           const isKbbiB = typeof b === 'object' && b.kbbi === true;
           const isSkA = typeof a === 'object' && a.sk === true;
           const isSkB = typeof b === 'object' && b.sk === true;
+
+          // Prioritize words marked with X
+          if (isMarkedXA !== isMarkedXB) {
+            return isMarkedXB - isMarkedXA;
+          }
           
           // Assign priority: KBBI=2, SK=1, Others=0
           const priorityA = isKbbiA ? 2 : (isSkA ? 1 : 0);
@@ -507,11 +585,14 @@
             const word = typeof item === 'string' ? item : item.word;
             const isInKbbi = typeof item === 'object' && item.kbbi === true;
             const isInSk = typeof item === 'object' && item.sk === true;
+            const isMarkedX = markedWords.has(word.toLowerCase());
             const kbbiClass = isInKbbi ? 'in-kbbi' : '';
             const skBadgeHTML = isInSk ? '<span class="sk-badge" title="Sambung Kata">SK</span>' : '';
             const kbbiBadgeHTML = isInKbbi ? '<span class="kbbi-badge" title="Kamus Besar Bahasa Indonesia">KBBI</span>' : '';
+            const xBadgeHTML = isMarkedX ? '<span class="x-badge" title="Ditandai dari daftar custom">X</span>' : '';
             return `
                         <div class="word-item ${kbbiClass}" title="${word}" onclick="copyToClipboard('${word}')">
+                    ${xBadgeHTML}
                             ${skBadgeHTML}
                             ${kbbiBadgeHTML}
                             <span>${word}</span>
